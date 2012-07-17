@@ -1,7 +1,5 @@
 open Pretty_types
 
-let esc () = "\027"
-
 let resolve_opt = function
    | None -> ""
    | Some n -> string_of_int n
@@ -39,8 +37,9 @@ let pp_attribute = function
    | Attribute attr -> pp_attr attr
    | Foreground colour -> pp_fg_colour colour
    | Background colour -> pp_bg_colour colour
-   | String s -> s
-
+   | String s -> (* should not be used in this context *)
+         raise (Invalid_argument "pp_attribute: String")
+(* TODO
 let pp_erase = function
    | Erase_EOL -> "K"
    | Erase_SOL -> "1K"
@@ -72,24 +71,62 @@ let pp_movement = function
    | Move_restore_attrs -> "8"
 
 let pp_escape = function
-   | Attributes al -> (esc ()) ^ "[" ^ (List.fold_right (fun at nx -> (pp_attribute at) ^ (if nx <> "m" then ";" else "") ^ nx) al "m")
-   | Movement m -> (esc ()) ^ "[" ^ (pp_movement m)
-   | Scroll s -> (esc ()) ^ "[" ^ (pp_scroll s)
-   | Erase e -> (esc ()) ^ "[" ^ (pp_erase e)
+   | Attributes al ->"\027[" ^ (List.fold_right (fun at nx -> (pp_attribute at) ^ (if nx <> "m" then ";" else "") ^ nx) al "m")
+   | Movement m -> "\027[" ^ (pp_movement m)
+   | Scroll s -> "\027[" ^ (pp_scroll s)
+   | Erase e -> "\027[" ^ (pp_erase e)
+*)
 
-let set_fg colour = print_string ((esc ()) ^ "[" ^ (pp_fg_colour colour) ^ "m")
-let set_bg colour = print_string ((esc ()) ^ "[" ^ (pp_bg_colour colour) ^ "m")
-let reset_attrs () = print_string "\027[0m"
-let clear_screen () = print_string "\027[2J\027[H"
-let goto_xy x y = print_string ("\027[" ^ (string_of_int y) ^ ";" ^ (string_of_int x) ^ "H")
+(*
+ * Set foreground colour
+ *)
+let set_fg colour =
+   print_string ("\027[" ^ (pp_fg_colour colour) ^ "m")
 
+(*
+ * Set background colour
+ *)
+let set_bg colour =
+   print_string ("\027[" ^ (pp_bg_colour colour) ^ "m")
+
+(*
+ * Reset attributes and colours to defaults
+ *)
+let reset_attrs () =
+   print_string "\027[0m"
+
+(*
+ * Clear the screen and set cursor to home position (top left corner)
+ *)
+let clear_screen () =
+   print_string "\027[2J\027[H"
+
+(*
+ * Sets cursor to: (x, y)
+ *)
+let goto_xy x y =
+   print_string ("\027[" ^ (string_of_int y) ^ ";" ^ (string_of_int x) ^ "H")
+
+(*
+ * Print string with given attributes and colours applied; the default colours
+ * and attributes are set upon completion
+ *)
 let print_string_attrs ?(attrs = []) str =
    let rec build_attrs = function
       | [] -> ""
       | [atr] -> (pp_attribute atr) ^ "m"
       | atr :: xs -> (pp_attribute atr) ^ ";" ^ build_attrs xs
-   in print_string ((if attrs = [] then "" else ("\027[" ^ (build_attrs attrs))) ^ str ^ "\027[0m")
+   in
+      print_string (
+         (if attrs = [] then ""
+         else ("\027[" ^ (build_attrs attrs))) ^ str ^ "\027[0m")
 
+(*
+ * Print sequence of ANSI/VT100 escape sequences and strings:
+    * Ex. Attr, Attr, String, Attr, String
+    * Will generate output of <ESC>[Attr;AttrmString<ESC>[AttrmString
+ * Will reset attributes and colours to defaults on completion.
+ *)
 let print_custom output =
    let rec build_attrs = function
       | [] -> ""
@@ -99,12 +136,23 @@ let print_custom output =
       | [] -> ""
       | x :: xs ->
             (match x with
-               | Attribute _ | Foreground _ | Background _ -> inner (x :: fmt) xs
+               | Attribute _ | Foreground _ | Background _ ->
+                     inner (x :: fmt) xs
                | String s ->
-                     (if fmt = [] then s else ("\027[" ^ (build_attrs fmt) ^ s)) ^ inner [] xs)
+                     (if fmt = [] then
+                        s
+                     else ("\027[" ^ (build_attrs fmt) ^ s)) ^ inner [] xs)
    in
       print_string ((inner [] output) ^ "\027[0m")
 
+(*
+ * Same as Pervasivies.print_string, but allows starting printing at a given
+ * cursor position with attributes applied.
+ *)
 let print_string ?(attrs = []) ?(x = -1) ?(y = -1) str =
-   if x <> -1 || y <> -1 then print_string ("\027[" ^ (string_of_int y) ^ ";" ^ (string_of_int x) ^ "H");
+   (if x <> -1 || y <> -1 then
+      let x = if x <> -1 then string_of_int x else ""
+      and y = if y <> -1 then string_of_int y else ""
+      in print_string ("\027[" ^ y ^ ";" ^ x ^ "H"));
+   
    print_string_attrs ~attrs:attrs str
