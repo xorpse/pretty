@@ -1,0 +1,11 @@
+OCaml ANSI/VT100 library
+------------------------------------------------------------------------------
+Supports the following functionality:
+   - Cursor control;
+   - Scrolling;
+   - Clearing/erasing text;
+   - Text attributes/colours.
+
+More features to come!
+
+For reference of ANSI/VT100 see: http://www.termsys.demon.co.uk/vtansi.htm
