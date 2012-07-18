@@ -1,9 +1,5 @@
 open Pretty_types
 
-let resolve_opt = function
-   | None -> ""
-   | Some n -> string_of_int n
-
 let pp_fg_colour = function
    | BLACK -> "30"
    | RED -> "31"
@@ -39,78 +35,71 @@ let pp_attribute = function
    | Background colour -> pp_bg_colour colour
    | String s -> (* should not be used in this context *)
          raise (Invalid_argument "pp_attribute: String")
-(* TODO
-let pp_erase = function
-   | Erase_EOL -> "K"
-   | Erase_SOL -> "1K"
-   | Erase_line -> "2K"
-   | Erase_down -> "J"
-   | Erase_up -> "1J"
-   | Erase_screen -> "2J"
-   
-let pp_scroll = function
-   | Scroll_screen (st, en) ->
-         (match st, en with
-            | None, None -> ""
-            | _ -> (resolve_opt st) ^ ";" ^ (resolve_opt en)) ^ "r"
-   | Scroll_down -> "D"
-   | Scroll_up -> "M"
 
-let pp_movement = function
-   | Move_home (row, col) ->
-         (match row, col with
-            | None, None -> ""
-            | _ -> (resolve_opt row) ^ ";" ^ (resolve_opt col)) ^ "H"
-   | Move_up n -> (resolve_opt n) ^ "A"
-   | Move_down n -> (resolve_opt n) ^ "B"
-   | Move_forward n -> (resolve_opt n) ^ "C"
-   | Move_backward n -> (resolve_opt n) ^ "D"
-   | Move_save -> "s"
-   | Move_unsave -> "u"
-   | Move_save_attrs -> "7"
-   | Move_restore_attrs -> "8"
-
-let pp_escape = function
-   | Attributes al ->"\027[" ^ (List.fold_right (fun at nx -> (pp_attribute at) ^ (if nx <> "m" then ";" else "") ^ nx) al "m")
-   | Movement m -> "\027[" ^ (pp_movement m)
-   | Scroll s -> "\027[" ^ (pp_scroll s)
-   | Erase e -> "\027[" ^ (pp_erase e)
-*)
-
-(*
- * Set foreground colour
- *)
 let set_fg colour =
    print_string ("\027[" ^ (pp_fg_colour colour) ^ "m")
 
-(*
- * Set background colour
- *)
 let set_bg colour =
    print_string ("\027[" ^ (pp_bg_colour colour) ^ "m")
 
-(*
- * Reset attributes and colours to defaults
- *)
 let reset_attrs () =
    print_string "\027[0m"
 
-(*
- * Clear the screen and set cursor to home position (top left corner)
- *)
 let clear_screen () =
    print_string "\027[2J\027[H"
 
-(*
- * Sets cursor to: (x, y)
- *)
-let goto_xy x y =
+let clear_to_eol () =
+   print_string "\027[K"
+
+let clear_to_sol () =
+   print_string "\027[1K"
+
+let clear_line () =
+   print_string "\027[2K"
+
+let clear_down () =
+   print_string "\027[J"
+
+let clear_up () =
+   print_string "\027[1J"
+
+let scroll_screen ?(pos = (-1, -1)) () =
+   print_string
+      (if pos = (-1, -1) then
+         "\027[r"
+      else
+         let x = string_of_int (fst pos) and y = string_of_int (snd pos)
+         in "\027[" ^ y ^ ";" ^ x ^ "r")
+
+let scroll_down () =
+   print_string "\027D"
+
+let scroll_up () =
+   print_string "\027M"
+
+let move_xy ?(x = 0) ?(y = 0) () =
    print_string ("\027[" ^ (string_of_int y) ^ ";" ^ (string_of_int x) ^ "H")
 
-(*
- * Print string with given attributes and colours applied; the default colours
- * and attributes are set upon completion
- *)
+let move_up ?(amount = 1) () =
+   print_string ("\027[" ^ (string_of_int amount) ^ "A")
+
+let move_down ?(amount = 1) () =
+   print_string ("\027[" ^ (string_of_int amount) ^ "B")
+
+let move_forward ?(amount = 1) () =
+   print_string ("\027[" ^ (string_of_int amount) ^ "C")
+
+let move_backward ?(amount = 1) () =
+   print_string ("\027[" ^ (string_of_int amount) ^ "D")
+
+let move_save () = print_string "\027[s"
+
+let move_unsave () = print_string "\027[u"
+
+let move_save_attr () = print_string "\0277"
+
+let move_restore_attr () = print_string "\0278"
+
 let print_string_attrs ?(attrs = []) str =
    let rec build_attrs = function
       | [] -> ""
@@ -121,12 +110,6 @@ let print_string_attrs ?(attrs = []) str =
          (if attrs = [] then ""
          else ("\027[" ^ (build_attrs attrs))) ^ str ^ "\027[0m")
 
-(*
- * Print sequence of ANSI/VT100 escape sequences and strings:
-    * Ex. Attr, Attr, String, Attr, String
-    * Will generate output of <ESC>[Attr;AttrmString<ESC>[AttrmString
- * Will reset attributes and colours to defaults on completion.
- *)
 let print_custom output =
    let rec build_attrs = function
       | [] -> ""
@@ -145,10 +128,6 @@ let print_custom output =
    in
       print_string ((inner [] output) ^ "\027[0m")
 
-(*
- * Same as Pervasivies.print_string, but allows starting printing at a given
- * cursor position with attributes applied.
- *)
 let print_string ?(attrs = []) ?(x = -1) ?(y = -1) str =
    (if x <> -1 || y <> -1 then
       let x = if x <> -1 then string_of_int x else ""
