@@ -6,6 +6,15 @@ Supports the following functionality:
    - Clearing/erasing text;
    - Text attributes/colours.
 
+Changes: 2012/07/19
+   - Fixed Makefile;
+   - Changed interface for Pretty.noecho_aux.
+
+Changes: 2012/07/18
+   - No-echo utility functions;
+   - Required dependency: unix module;
+   - Turned off dynamic loading in Makefile.
+
 More features to come!
 
 For reference of ANSI/VT100 see: http://www.termsys.demon.co.uk/vtansi.htm

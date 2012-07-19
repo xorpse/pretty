@@ -79,3 +79,13 @@ val print_custom : attribute list -> unit
     * Supports printing text with decorative attributes applied.
  *)
 val print_string : ?attrs:attribute list -> ?x:int -> ?y:int -> string -> unit
+
+(* Turn of echoing whilst reading input.
+ *
+ * NOTE:
+    * Restores echoing after completion.
+ *)
+val noecho_aux        : Unix.file_descr -> (Unix.file_descr -> 'a) -> 'a
+val noecho_read_line  : unit -> string
+val noecho_read_int   : unit -> int
+val noecho_read_float : unit -> float

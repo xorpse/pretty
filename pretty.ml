@@ -135,3 +135,16 @@ let print_string ?(attrs = []) ?(x = -1) ?(y = -1) str =
       in print_string ("\027[" ^ y ^ ";" ^ x ^ "H"));
    
    print_string_attrs ~attrs:attrs str
+
+let noecho_aux fd f =
+   let open Unix in
+   let attrs = tcgetattr stdin in
+   tcsetattr fd TCSANOW { attrs with c_echo = false };
+   let ret = try f fd with
+      | ex -> tcsetattr fd TCSANOW attrs; raise ex
+   in
+   tcsetattr fd TCSANOW attrs; ret
+
+let noecho_read_line () = noecho_aux Unix.stdin (fun fd -> read_line ())
+let noecho_read_int () = noecho_aux Unix.stdin (fun fd -> read_int ())
+let noecho_read_float () = noecho_aux Unix.stdin (fun fd -> read_float ())
